@@ -103,6 +103,7 @@ final class Installation {
 		Configuration::setParameter('provider',"Papiando Riba Internet");
 		Configuration::setParameter('provider-url',"https://papiando.com");
 		Configuration::setParameter('route',self::$_Router->getRoute() ?? Configuration::getDefault('route','/'));
+		Configuration::setParameter('show-menu-module',SETTING_NO);
 		Configuration::setParameter('show-user-module',SETTING_NO);
 		Configuration::setParameter('site-name',Configuration::get('site-name','Cubo CMS'));
 		Configuration::setParameter('template',Configuration::getDefault('template','default'));
