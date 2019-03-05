@@ -32,6 +32,9 @@ final class Installation {
 		if(!isset($_SESSION['setup'])) $_SESSION['setup'] = (object)array();
 		switch($step) {
 			case '3':
+				// Load IP tracker cookie
+				$iptracker = json_decode($_COOKIE['cubo-iptracker']);
+				// Save form data to session
 				$_SESSION['setup']->host_name = $_POST['host_name'] ?? $_SESSION['setup']->host_name ?? 'localhost';
 				$_SESSION['setup']->dbo_driver = $_POST['dbo_driver'] ?? $_SESSION['setup']->dbo_driver ?? 'mysql';
 				$_SESSION['setup']->database_name = $_POST['database_name'] ?? $_SESSION['setup']->database_name ?? 'cubo-cms';
@@ -39,10 +42,9 @@ final class Installation {
 				$_SESSION['setup']->database_password = $_POST['database_password'] ?? $_SESSION['setup']->database_password ?? '';
 				Configuration::set('database',array('dsn'=>"{$_SESSION['setup']->dbo_driver}:host={$_SESSION['setup']->host_name};dbname={$_SESSION['setup']->database_name}",'user'=>$_SESSION['setup']->database_user,'password'=>$_SESSION['setup']->database_password,'ignore_errors'=>true));
 				self::$_Database || self::$_Database = new Database(Configuration::get('database'));
-				//$detectedCountry = Locale::getDetectedCountry();
 				if(self::$_Database->connected()) {
 					// Retrieve list of all countries and select detected country as default
-					$listOptions = Locale::getOptions(Locale::getCountryList(),'CW');
+					$listOptions = Model::getOptions(International::getTimezoneList(),$iptracker->timezone);
 					$html = '<h1>Installation</h1><h4 class="text-info">Configure your Regional Settings</h4>';
 					$html .= "<p>Preset the defaults for your region. You can add languages later if you want your site to be multilingual.</p>";
 					$html .= "<form name=\"form-step3\" action=\"\" method=\"post\">";
@@ -55,9 +57,14 @@ final class Installation {
 					Session::setMessage(array('alert'=>'danger','icon'=>'exclamation','message'=>"Could not connect to the database. Please review the connection details."));
 				}
 			case '2':
+				// Load script to retrieve IP tracking data needed for step 3
+				Configuration::addScript('https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js');
+				Configuration::addScript(__BASE__.'/'.__ROUTE__.'/js/iptracker.js');
+				// Save form data to session
 				$_SESSION['setup']->site_name = $_POST['site_name'] ?? $_SESSION['setup']->site_name ?? '';
 				$_SESSION['setup']->domain_name = $_POST['domain_name'] ?? $_SESSION['setup']->domain_name ?? '';
 				$_SESSION['setup']->site_email = $_POST['site_email'] ?? $_SESSION['setup']->site_email ?? '';
+				// Show form to configure database connection
 				$html = '<h1>Installation</h1><h4 class="text-info">Configure your Database Connection</h4>';
 				$html .= "<p><em>Cubo CMS</em> uses DBO to connect to the database. We expect you to create the database and a user with minimal permissions of SELECT, UPDATE, and INSERT. Please provide this information in the form below and turn to the next page.</p>";
 				$html .= "<form name=\"form-step2\" action=\"\" method=\"post\">";
@@ -71,6 +78,7 @@ final class Installation {
 				$html .= "</form>";
 				break;
 			case '1':
+				// Show form to configure site defaults
 				$html = '<h1>Installation</h1><h4 class="text-info">Configure your Site</h4>';
 				$html .= "<p>It looks like you just installed <em>Cubo CMS</em> on your server. On behalf of the staff of <em>Cubo CMS</em>, we like to thank you for your support in using this Content Management System.</p>";
 				$html .= "<p>This installer will help you configure your web site to suit your needs. First, we need to acquire some general information about your site. Please fill in the form below and turn to the next page.</p>";
