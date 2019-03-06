@@ -15,6 +15,16 @@ final class Installation {
 		self::run();
 	}
 	
+	// Construct list of options for select input
+	private static function getOptions($list,$default = null) {
+		$html = '';
+		foreach($list as $item) {
+			$itemData = (object)['country'=>$item->country->name ?? 'world','currency'=>$item->currency->name ?? 'euro','language'=>$item->language->name ?? 'undefined'];
+			$html .= '<option value="'.$item->name.'" data-item="'.htmlentities(json_encode($itemData)).'"'.($default == $item->name ? ' selected' : '').'>'.$item->title.'</option>';
+		}
+		return $html;
+	}
+	
 	protected static function renderPlugins($html) {
 		// Render plugins
 		$_Plugins = Plugin::getAll();
@@ -44,14 +54,22 @@ final class Installation {
 				self::$_Database || self::$_Database = new Database(Configuration::get('database'));
 				if(self::$_Database->connected()) {
 					// Retrieve list of all countries and select detected country as default
-					$listOptions = Model::getOptions(International::getTimezoneList(),$iptracker->timezone);
+					$defaultTimezone = $_SESSION['setup']->timezone ?? strtolower(str_replace('/','-',$iptracker->timezone)) ?? 'utc';
+					$timezoneOptions = self::getOptions(International::getTimezoneList(),$defaultTimezone);
+					$countryOptions = self::getOptions(International::getCountryList());
+					$currencyOptions = self::getOptions(International::getCurrencyList());
+					$languageOptions = self::getOptions(International::getLanguageList());
 					$html = '<h1>Installation</h1><h4 class="text-info">Configure your Regional Settings</h4>';
-					$html .= "<p>Preset the defaults for your region. You can add languages later if you want your site to be multilingual.</p>";
-					$html .= "<form name=\"form-step3\" action=\"\" method=\"post\">";
-					$html .= "<input name=\"next-step\" type=\"hidden\" value=\"4\" />";
-					$html .= "<div class=\"form-group\"><label for=\"country-name\">Country Name</label><select name=\"country_name\" id=\"country-name\" class=\"form-control\" value=\"".($_SESSION['setup']->country_name ?? 'US')."\" autofocus />".$listOptions."</select></div>";
-					$html .= "<div class=\"form-group\"><a class=\"btn btn-info\" href=\"/?debug&next_step=2\">Back</a><button class=\"btn btn-primary\" type=\"submit\">Next</button></div>";
-					$html .= "</form>";
+					$html .= '<pre>'.json_encode($iptracker,JSON_PRETTY_PRINT).'</pre>';
+					$html .= '<p>Preset the defaults for your region. You can add languages later if you want your site to be multilingual.</p>';
+					$html .= '<form name="form-step3" action="" method="post">';
+					$html .= '<input name="next-step" type="hidden" value="4" />';
+					$html .= '<div class="form-group"><label for="timezone">Time Zone</label><select id="timezone" name="timezone" class="form-control" autofocus>'.$timezoneOptions.'</select></div>';
+					$html .= '<div class="form-group"><label for="country">Country</label><select id="country" name="country" class="form-control">'.$countryOptions.'</select></div>';
+					$html .= '<div class="form-group"><label for="currency">Default Currency</label><select id="currency" name="currency" class="form-control">'.$currencyOptions.'</select></div>';
+					$html .= '<div class="form-group"><label for="language">Default Language</label><select id="language" name="language" class="form-control">'.$languageOptions.'</select></div>';
+					$html .= '<div class="form-group"><a class="btn btn-info" href="/?debug&next_step=2">Back</a><button class="btn btn-primary" type="submit">Next</button></div>';
+					$html .= '</form>';
 					break;
 				} else {
 					Session::setMessage(array('alert'=>'danger','icon'=>'exclamation','message'=>"Could not connect to the database. Please review the connection details."));
