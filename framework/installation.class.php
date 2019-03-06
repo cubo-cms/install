@@ -4,6 +4,7 @@ namespace Cubo;
 defined('__CUBO__') || new \Exception("No use starting a class without an include");
 
 final class Installation {
+	protected static $detectedTimezone;
 	protected static $_Configuration;
 	protected static $_Controller;
 	protected static $_Database;
@@ -12,15 +13,22 @@ final class Installation {
 	
 	// Constructor automatically runs the installation
 	public function __construct() {
+		$detectedTimezone = (object)[];
 		self::run();
 	}
 	
 	// Construct list of options for select input
 	private static function getOptions($list,$default = null) {
 		$html = '';
-		foreach($list as $item) {
-			$itemData = (object)['country'=>$item->country->name ?? 'world','currency'=>$item->currency->name ?? 'euro','language'=>$item->language->name ?? 'undefined'];
-			$html .= '<option value="'.$item->name.'" data-item="'.htmlentities(json_encode($itemData)).'"'.($default == $item->name ? ' selected' : '').'>'.$item->title.'</option>';
+		foreach($list as &$item) {
+			if(isset($item->country)) {
+				$itemData = (object)['country'=>$item->country->name ?? 'world','currency'=>$item->currency->name ?? 'euro','language'=>$item->language->name ?? 'undefined'];
+				$html .= '<option value="'.$item->name.'" data-item="'.htmlentities(json_encode($itemData)).'"'.($default == $item->name ? ' selected' : '').'>'.$item->title.'</option>';
+				if($default == $item->name)
+					self::$detectedTimezone = $item;
+			} else {
+				$html .= '<option value="'.$item->name.'"'.($default == $item->name ? ' selected' : '').'>'.$item->title.'</option>';
+			}
 		}
 		return $html;
 	}
@@ -56,11 +64,13 @@ final class Installation {
 					// Retrieve list of all countries and select detected country as default
 					$defaultTimezone = $_SESSION['setup']->timezone ?? strtolower(str_replace('/','-',$iptracker->timezone)) ?? 'utc';
 					$timezoneOptions = self::getOptions(International::getTimezoneList(),$defaultTimezone);
-					$countryOptions = self::getOptions(International::getCountryList());
-					$currencyOptions = self::getOptions(International::getCurrencyList());
-					$languageOptions = self::getOptions(International::getLanguageList());
+					$defaultCountry = $_SESSION['setup']->country ?? self::$detectedTimezone->country->name ?? 'world';
+					$countryOptions = self::getOptions(International::getCountryList(),$defaultCountry);
+					$defaultCurrency = $_SESSION['setup']->currency ?? self::$detectedTimezone->currency->name ?? 'euro';
+					$currencyOptions = self::getOptions(International::getCurrencyList(),$defaultCurrency);
+					$defaultLanguage = $_SESSION['setup']->language ?? self::$detectedTimezone->language->name ?? 'undefined';
+					$languageOptions = self::getOptions(International::getLanguageList(),$defaultLanguage);
 					$html = '<h1>Installation</h1><h4 class="text-info">Configure your Regional Settings</h4>';
-					$html .= '<pre>'.json_encode($iptracker,JSON_PRETTY_PRINT).'</pre>';
 					$html .= '<p>Preset the defaults for your region. You can add languages later if you want your site to be multilingual.</p>';
 					$html .= '<form name="form-step3" action="" method="post">';
 					$html .= '<input name="next-step" type="hidden" value="4" />';
